@@ -28,7 +28,7 @@
 ### Установка
 Для работы с JMCC нужно:
 
-1. Скачать `jmcc.py` на [странице релизов GitHub)[https://github.com/Deolure/JMCC-Fork/releases/]
+1. Скачать `jmcc.py` на [странице релизов GitHub](https://github.com/Deolure/JMCC-Fork/releases/)
 2. Запустить `python jmcc.py` — остальные файлы скачаются автоматически
 
 ## Требования
