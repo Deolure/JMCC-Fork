@@ -1,0 +1,488 @@
+class number {
+    inline function __add__(first: number, second: number) -> number {
+        return variable::add([first,second]);
+    }
+    @setter
+    inline function __iadd__(self: number, second: number) -> number {
+        return self.increment(second);
+    }
+    inline function __subtract__(first: number, second: number) -> number {
+        return variable::subtract([first,second]);
+    }
+    @setter
+    inline function __isubtract__(self: number, second: number) -> number {
+        return self.decrement(second);
+    }
+    
+    inline function __multiply__(first: number, second: number) -> number {
+        return variable::multiply([first,second]);
+    }
+    @setter
+    inline function __imultiply__(self: number, second: number) -> number {
+        return self = variable::multiply([self,second]);
+    }
+    inline function __divide__(first: number, second: number) -> number {
+        return variable::divide([first,second]);
+    }
+    @setter
+    inline function __idivide__(self: number, second: number) -> number {
+        return self = variable::divide([self,second]);
+    }
+    inline function __remainder__(first: number, second: number) -> number {
+        return variable::remainder(first,second,"MODULO");
+    }
+    @setter
+    inline function __iremainder__(self: number, second: number) -> number {
+        self = variable::remainder(self,second,"MODULO");
+    }
+    inline function __pow__(first: number, second: number) -> number {
+        return variable::pow(first,second);
+    }
+    @setter
+    inline function __ipow__(self: number, second: number) -> number {
+        self = variable::pow(self,second);
+    }
+    inline function __equals__(first: number, second: number) -> text {
+        return first.equals(second);
+    }
+    inline function __not_equals__(first: number, second: number) -> text {
+        return first.not_equals(second);
+    }
+    inline function __greater__(first: text, second: text) -> number {
+        return first.greater(second);
+    }
+    inline function __less__(first: text, second: text) -> number {
+        return first.less(second);
+    }
+    inline function __greater_or_equals__(first: text, second: text) -> number {
+        return first.greater_or_equals(second);
+    }
+    inline function __less_or_equals__(first: text, second: text) -> number {
+        return first.less_or_equals(second);
+    }
+}
+class text {
+    inline function __add__(first: text, second: text) -> text {
+        return "$first$second";
+    }
+    inline function __multiply__(first: text, second: number) -> text {
+        return variable::repeat_text(first,second);
+    }
+    inline function __equals__(first: text, second: text) -> number {
+        return first.equals(second);
+    }
+    inline function __not_equals__(first: text, second: text) -> number {
+        return first.not_equals(second);
+    }
+    inline function __greater__(first: text, second: text) -> number {
+        length_first = variable::get_text_length(first);
+        length_second = variable::get_text_length(second);
+
+        return length_first.greater(length_second);
+    }
+    inline function __less__(first: text, second: text) -> number {
+        length_first = variable::get_text_length(first);
+        length_second = variable::get_text_length(second);
+
+        return length_first.less(length_second);
+    }
+    inline function __greater_or_equals__(first: text, second: text) -> number {
+        length_first = variable::get_text_length(first);
+        length_second = variable::get_text_length(second);
+
+        return length_first.greater_or_equals(length_second);
+    }
+    inline function __less_or_equals__(first: text, second: text) -> number {
+        length_first = variable::get_text_length(first);
+        length_second = variable::get_text_length(second);
+
+        return length_first.less_or_equals(length_second);
+    }
+
+    @getter
+    inline function __subscript__(self: text, index: number) -> text {
+        return self.get_char_at(index);
+    }
+    @getter
+    inline function __slice__(self: text, start: number, end: number) -> text {
+        return self.trim_text();
+    }
+    inline function len(self: text) -> number {
+        return self.get_text_length();
+    }
+
+}
+class vector {
+    inline function __equals__ (first: vector, second: vector) -> vector {
+        return first.equals(second);
+    }
+    inline function __not_equals__ (first: vector, second: vector) -> vector {
+        return first.not_equals(second);
+    }
+    inline function __add__ (first: vector, second: vector) -> vector {
+        return variable::add_vectors([first, second]);
+    }
+    inline function __subtract__ (first: vector, second: vector) -> number {
+        return variable::subtract_vectors([first, second]);
+    }
+    inline function __multiply__ (first: vector, second: number) -> vector {
+        return variable::multiply_vector(first, second);
+    }
+    inline function __divide__ (first: vector, second: vector) -> vector {
+        return variable::divide_vector(first, second);
+    }
+}
+
+class vector(vector) {
+    inline function __set_attribute__(self, key, value) {
+        self = self.set_vector_component(value, key);
+    }
+    inline function __get_attribute__(self, key) {
+        return self.get_vector_component(key);
+    }
+}
+class item {
+    inline function __equals__(first: item, second: item) -> item {
+        return first.equals(second);
+    }
+    inline function __not_equals__(first: item, second: item) -> item {
+        return first.not_equals(second);
+    }
+}
+
+class item(item) {
+    @getter
+    inline function id(self: item) -> text {
+        return self.get_item_type("id")
+    }
+    @getter
+    inline function name(self: item) -> text {
+        return self.get_item_name();
+    }
+    @getter
+    inline function count(self: item) -> number {
+        return self.get_item_amount();
+    }
+    @getter
+    inline function lore(self: item) -> array {
+        return self.get_item_lore();
+    }
+    @getter
+    inline function nbt(self: item) {
+        return self.get_item_nbt_tags("ALL");
+    }
+    @getter
+    inline function tags(self: item) {
+        return self.get_item_custom_tags();
+    }
+    @setter
+    inline function id(self: item, type: text) -> item {
+        self.set_item_type(self,type);
+        return self;
+    }
+    @setter
+    inline function name(self: item, name: text) -> item {
+        self = self.set_item_name(name);
+        return self;
+    }
+    @setter
+    inline function count(self: item, count: number) -> item {
+        self = self.set_item_amount(count);
+        return self;
+    }
+    @setter
+    inline function lore(self: item, lore: array) -> item {
+        self = self.set_item_lore(lore);
+        return self;
+    }
+    @setter
+    inline function tags(self: item, tags: map) -> item {
+        repeat::for_each_map_entry(tags) {key,value ->
+            self = self.set_item_custom_tag(key,value);
+        }
+        return self;
+    }
+}
+
+class sound {
+    inline function __equals__(first: sound, second: sound) -> sound {
+        return first.equals(second);
+    }
+    inline function __not_equals__(first: sound, second: sound) -> sound {
+        return first.not_equals(second);
+    }
+}
+class sound(sound) {
+    @getter
+    inline function id(self: sound) -> text {
+        return self.get_sound_type();
+    }
+    @getter
+    inline function volume(self: sound) -> number {
+        return self.get_sound_volume_action();
+    }
+    @getter
+    inline function pitch(self: sound) -> number {
+        return self.get_sound_pitch();
+    }
+    @getter
+    inline function variation(self: sound) -> number {
+        return self.get_sound_variation();
+    }
+    @getter
+    inline function source(self: sound) -> text {
+        return self.get_sound_source();
+    }
+    @setter
+    inline function id(self: sound, type: text) -> sound {
+        return self.set_sound_type(self, "", type);
+    }
+    @setter
+    inline function volume(self: sound, volume: number) -> sound {
+        return self.set_sound_volume_action(volume);
+    }
+    @setter
+    inline function pitch(self: sound, pitch: number) -> sound {
+        return self.set_sound_pitch(pitch);
+    }
+    @setter
+    inline function variation(self: sound, variation: text) -> sound {
+        return self.set_sound_variation(variation);
+    }
+    @setter 
+    inline function source(self: sound, source: text) -> sound {
+        return self.set_sound_source(source);
+    }
+}
+class particle {
+    inline function __equals__(first: particle, second: particle) -> particle {
+        return first.equals(second);
+    }
+    inline function __not_equals__(first: particle, second: particle) -> particle {
+        return first.not_equals(second);
+    }
+}
+class particle(particle) {
+    @getter
+    inline function id(self: particle) -> text {
+        return self.get_particle_type();
+    }
+    @getter
+    inline function count(self: particle) -> number {
+        return self.get_particle_amount();
+    }
+    @getter
+    inline function spread(self: particle) -> number {
+        return [self.get_particle_spread("HORIZONTAL"), self.get_particle_spread("VERTICAL")];
+    }
+    @getter
+    inline function size(self: particle) -> number {
+        return self.get_particle_size();
+    }
+    @getter
+    inline function material(self: particle) -> text {
+        return self.get_particle_material();
+    }
+    @getter
+    inline function color(self: particle) -> text {
+        return self.get_particle_color();
+    }
+    @getter
+    inline function offset(self: particle) -> vector {
+        return self.get_particle_offset();
+    }
+    @setter
+    inline function id(self: particle, type: text) -> particle {
+        return self.set_particle_type(type);
+    }
+    @setter
+    inline function count(self: particle, count: number) -> particle {
+        return self.set_particle_amount(count);
+    }
+    @setter
+    inline function spread(self: particle, spread: array) -> particle {
+        horizontal = variable::get_list_value(spread, 0);
+        vertical = variable::get_list_value(spread, 1);
+        return self.set_particle_spread(horizontal, vertical);
+    }
+    @setter
+    inline function size(self: particle, size: number) -> particle {
+        return self.set_particle_size(size);
+    }
+    @setter
+    inline function material(self: particle, material: text) -> particle {
+        return self.set_particle_material(material);
+    }
+    @setter
+    inline function color(self: particle, color: text) -> particle {
+        return self.set_particle_color(color);
+    }
+    @setter
+    inline function offset(self: particle, offset: vector) -> particle {
+        return self.set_particle_offset(offset);
+    }
+}
+class potion {
+    inline function __equals__(first: potion, second: potion) -> potion {
+        return first.equals(second);
+    }
+    inline function __not_equals__(first: potion, second: potion) -> potion {
+        return first.not_equals(second);
+    }
+}
+class potion(potion) {
+    @getter
+    inline function id(self: potion) -> text {
+        return self.get_potion_effect_type();
+    }
+    @getter
+    inline function amplifier(self: potion) -> number {
+        return self.get_potion_effect_amplifier();
+    }
+    @getter
+    inline function duration(self: potion) -> number {
+        return self.get_potion_effect_duration();
+    }
+    @setter 
+    inline function id(self: potion, type: text) -> potion {
+        return self.set_potion_effect_type(type);
+    }
+    @setter
+    inline function amplifier(self: potion, amplifier: number) -> potion {
+        return self.set_potion_effect_amplifier(amplifier);
+    }
+    @setter
+    inline function duration(self: potion, duration: number) -> potion {
+        return self.set_potion_effect_duration(duration);
+    }
+}
+class location {
+    inline function __equals__(first: location, second: location) -> number {
+        return first.equals(second);
+    }
+    inline function __not_equals__(first: location, second: location) -> number {
+        return first.not_equals(second);
+    }
+    inline function __add__(first: location, second: location) -> location {
+        x,y,z,yaw,pitch = second.get_all_coordinates();
+        return variable::shift_all_coordinates(first,x,y,z,yaw,pitch);
+    }
+    inline function __subtract__(first: location, second: location) -> location {
+        x,y,z,yaw,pitch = second.get_all_coordinates()
+        variable::subtract(x,[0,x]);
+        variable::subtract(y,[0,y]);
+        variable::subtract(z,[0,z]);
+        variable::subtract(yaw,[0,yaw]);
+        variable::subtract(pitch,[0,pitch]);
+        return variable::shift_all_coordinates(first,x,y,z,yaw,pitch);
+    }
+    inline function __multiply__(first: location, second: location) -> location {
+        x,y,z,yaw,pitch = first.get_all_coordinates();
+        x2,y2,z2,yaw2,pitch2 = second.get_all_coordinates();
+        return variable::set_all_coordinates(variable::multiply([x,x2]), variable::multiply([y,y2]), variable::multiply([z,z2]), variable::multiply([yaw,yaw2]), variable::multiply([pitch,pitch2]));
+    }
+    inline function __divide__(first: location, second: location) -> location {
+        x,y,z,yaw,pitch = first.get_all_coordinates();
+        x2,y2,z2,yaw2,pitch2 = second.get_all_coordinates();
+        return variable::set_all_coordinates(variable::divide([x,x2]), variable::divide([y,y2]), variable::divide([z,z2]), variable::divide([yaw,yaw2]), variable::divide([pitch,pitch2]));
+    }
+}
+
+class location(location) {
+    inline function __set_attribute__(self, key, value) {
+        self = self.set_coordinate(value, key);
+    }
+    inline function __get_attribute__(self, key) {
+        return self.get_coordinate(key);
+    }
+}
+class map {
+    inline function __equals__(first: map, second: map) -> map {
+        return first.equals(second);
+    }
+    inline function __not_equals__(first: map, second: map) -> map {
+        return first.not_equals(second);
+    }
+    inline function __contains__(first: map, second: text) -> number {
+        return first.map_has_key(second);
+    }
+    inline function __add__(first: map, second: map) -> map {
+        return variable::append_map(first, second);
+    }
+    @getter
+    inline function __subscript__(self: map, index: text) -> any {
+        return self.get_map_value(index);
+    }
+    @setter
+    inline function __subscript__(self: map, index: text, value: any) -> map {
+        self.set_map_value(self,index,value);
+    }
+}
+class array {
+    inline function __add__(first: array, second: array) -> array {
+        return variable::append_list(first, second);
+    }
+    inline function __multiply__(first: array, second: number) -> array {
+        list = [];
+        repeat::multi_times(second) {c ->
+            list = variable::append_list(list, first);
+        }
+        return list;
+    }
+    inline function __equals__(first: array, second: array) -> array {
+        return first.equals(second);
+    }
+    inline function __not_equals__(first: array, second: array) -> array {
+        return first.not_equals(second);
+    }
+    inline function __greater__(first: array, second: array) -> array {
+        length_first = variable::get_list_length(first);
+        length_second = variable::get_list_length(second);
+
+        return length_first.greater(length_second);
+    }
+    inline function __less__(first: array, second: array) -> array {
+        length_first = variable::get_list_length(first);
+        length_second = variable::get_list_length(second);
+
+        return length_first.less(length_second);
+    }
+    inline function __greater_or_equals__(first: array, second: array) -> array {
+        length_first = variable::get_list_length(first);
+        length_second = variable::get_list_length(second);
+
+        return length_first.greater_or_equals(length_second);
+    }
+    inline function __less_or_equals__(first: array, second: array) -> array {
+        length_first = variable::get_list_length(first);
+        length_second = variable::get_list_length(second);
+
+        return length_first.less_or_equals(length_second);
+    }
+    inline function __contains__(first: array, second: text) -> number {
+        return first.list_contains_value([second]);
+    }
+
+    @getter
+    inline function __subscript__(self: array, index: number) -> any {
+        return self.get_list_value(index);
+    }
+    @getter
+    inline function __slice__(self: array, first_index: number, second_index: number) -> array {
+        return self.trim_list(first_index,second_index);
+    }
+    @setter
+    inline function __subscript__(self: array, index: number, value: any) -> array {
+        self.set_list_value(self,index,value)
+        return self;
+    }
+    @setter
+    inline function __slice__(self: array,first_index: number, second_index: number, value: array) {
+        cdown = 0;
+        repeat::on_range(first_index,second_index) { num ->
+            val = variable::get_list_value(value,cdown);
+            self.set_list_value(self,num,val);
+            variable::increment(cdown,1);
+        }
+    }
+}
