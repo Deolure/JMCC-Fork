@@ -5,14 +5,6 @@
 
 > Оригинальный проект: [donzgold/JustMC_compilator](https://github.com/donzgold/JustMC_compilator)
 
-## Установка
-1. Скачай `jmcc.py`
-2. Запусти `python jmcc.py` — остальные файлы скачаются автоматически
-
-## Требования
-- Python 3.12+
-- `python -m pip install requests`
-
 Это джей эм си си, он компилирует код в json, который используется на сервере [JustMC](justmc.ru)
 ### Содержание
 
@@ -37,16 +29,12 @@
 ### Установка
 Для работы с JMCC нужно:
 
-1. Открыть [страницу релизов GitHub](https://github.com/donzgold/JustMC_compilator/releases)
-2. Выбрать понравившийся файл с компилятором
-3. Открыть командную строку в папке с установленным файлом:\
-   Win + R на **Windows**, затем вписать `cmd` в появивщееся окно
-4. Использовать компилятор:
+1. Скачать `jmcc.py`
+2. Запустить `python jmcc.py` — остальные файлы скачаются автоматически
 
-   ```shell
-   # Для Windows
-   $ py jmcc.py compile example.jc
-   ```
+## Требования
+- Python 3.12+
+- `python -m pip install requests`
 
 Для просмотра помощи о командах, используйте команду `help`
 
