@@ -1,5 +1,17 @@
 
-# JMCC
+# JMCC Fork
+Это модифицированный JMCC, который компилирует код в json.
+Изменения указаны в [CHANGELOG.md](CHANGELOG.md).
+
+> Оригинальный проект: [donzgold/JustMC_compilator](https://github.com/donzgold/JustMC_compilator)
+
+## Установка
+1. Скачай `jmcc.py`
+2. Запусти `python jmcc.py` — остальные файлы скачаются автоматически
+
+## Требования
+- Python 3.12+
+- `python -m pip install requests`
 
 Это джей эм си си, он компилирует код в json, который используется на сервере [JustMC](justmc.ru)
 ### Содержание
