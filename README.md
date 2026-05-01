@@ -1,11 +1,10 @@
 
 # JMCC Fork
-Это модифицированный JMCC, который компилирует код в json.
+Это модифицированный JMCC, он компилирует код в json, который используется на сервере [JustMC](justmc.ru)
 Изменения указаны в [CHANGELOG.md](CHANGELOG.md).
 
 > Оригинальный проект: [donzgold/JustMC_compilator](https://github.com/donzgold/JustMC_compilator)
 
-Это джей эм си си, он компилирует код в json, который используется на сервере [JustMC](justmc.ru)
 ### Содержание
 
 1. [Установка](#установка)
