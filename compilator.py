@@ -159,6 +159,8 @@ class Tokens:
     CONTINUE: int = 80
     REF: int = 81
     ENUM_DEFINE: int = 82
+    FOR: int = 83
+    WHILE: int = 84
 
 
 class Token:
@@ -216,7 +218,8 @@ class Lexer:
              "class": Tokens.CLASS_DEFINE, "event": Tokens.EVENT_DEFINE, "import": Tokens.IMPORT, "and": Tokens.AND,
              "or": Tokens.OR, "not": Tokens.NOT, "return": Tokens.RETURN, "elif": Tokens.ELIF, "as": Tokens.AS,
              "match": Tokens.MATCH, "in": Tokens.IN, "case": Tokens.CASE, "break": Tokens.BREAK,
-             "continue": Tokens.CONTINUE, "try": Tokens.TRY, "catch": Tokens.CATCH, "except": Tokens.CATCH, "ref": Tokens.REF, "struct": Tokens.CLASS_DEFINE, "enum": Tokens.ENUM_DEFINE}
+             "continue": Tokens.CONTINUE, "try": Tokens.TRY, "catch": Tokens.CATCH, "except": Tokens.CATCH, "ref": Tokens.REF, "struct": Tokens.CLASS_DEFINE, "enum": Tokens.ENUM_DEFINE,
+             "for": Tokens.FOR, "while": Tokens.WHILE}
     var_dect = {"inline": Tokens.INLINE_VARIABLE,
                 "local": Tokens.LOCAL_VARIABLE, "game": Tokens.GAME_VARIABLE, "save": Tokens.SAVE_VARIABLE,
                 "jmcc": Tokens.JMCC_VARIABLE}
@@ -722,6 +725,9 @@ class Parser:
             elif self.current_token.type == Tokens.DOUBLE_COLON:
                 self.eat(Tokens.DOUBLE_COLON)
                 act = self.current_token
+                # for/while могут быть именами действий после ::
+                if act.type in {Tokens.FOR, Tokens.WHILE}:
+                    act.type = Tokens.VARIABLE
                 self.eat(Tokens.VARIABLE)
                 if self.current_token.type == Tokens.SUBSTRING:
                     selector = self.current_token
@@ -1390,6 +1396,239 @@ class Parser:
                     self.index = cur_index
                     self.current_token = self.token(self.index)
             return if_(main_condition, main_ops, eli, els, token.starting_pos, ending_pos, token.source)
+        elif self.current_token.type == Tokens.WHILE:
+            # while(condition) {}  →  repeat::while
+            # while condition {}   →  тоже работает
+            # while(true) {}       →  repeat::forever
+            token = self.current_token
+            self.eat(Tokens.WHILE)
+            has_paren = self.current_token.type == Tokens.LPAREN
+            if has_paren:
+                self.eat(Tokens.LPAREN)
+            condition = self.expr()
+            if has_paren:
+                self.eat(Tokens.RPAREN)
+            # Парсим тело цикла
+            self.eat(Tokens.LCPAREN)
+            self.context.next_lvl()
+            while (self.current_token.type != Tokens.EOF) and (self.current_token.type != Tokens.RCPAREN):
+                self.context.add_operation(self.up_statement(Tokens.RCPAREN))
+                self.context.update()
+            loop_ops = self.context.get_operations()
+            self.context.previous_lvl()
+            ending_pos = self.current_token.ending_pos
+            self.eat(Tokens.RCPAREN)
+            # while(true) → repeat::forever
+            is_true = (
+                (condition.type == "variable" and getattr(condition, "value", None) == "true") or
+                (condition.type == "number" and getattr(condition, "value", None) == 1)
+            )
+            if is_true:
+                return action("repeat", "forever",
+                              calling_args([], {}, token.starting_pos, ending_pos, token.source),
+                              token.starting_pos, ending_pos, token.source, operations=loop_ops)
+            return while_(condition, loop_ops, token.starting_pos, ending_pos, token.source)
+        elif self.current_token.type == Tokens.FOR:
+            # for(10) {}      или  for 10 {}
+            # for(i in ...) {}    или  for i in ... {}
+            token = self.current_token
+            self.eat(Tokens.FOR)
+            has_paren = self.current_token.type == Tokens.LPAREN
+            if has_paren:
+                self.eat(Tokens.LPAREN)
+
+            def _eat_rparen():
+                if has_paren:
+                    self.eat(Tokens.RPAREN)
+
+            def _parse_loop_body():
+                self.eat(Tokens.LCPAREN)
+                self.context.next_lvl()
+                while (self.current_token.type != Tokens.EOF) and (self.current_token.type != Tokens.RCPAREN):
+                    self.context.add_operation(self.up_statement(Tokens.RCPAREN))
+                    self.context.update()
+                ops = self.context.get_operations()
+                self.context.previous_lvl()
+                ep = self.current_token.ending_pos
+                self.eat(Tokens.RCPAREN)
+                return ops, ep
+
+            def _is_location(it):
+                return it.type == "location"
+
+            def _make_junk_var(prefix):
+                return var(f"jmcc._{prefix}_{new(prefix)}", Vars.LINE,
+                           token.starting_pos, token.ending_pos, token.source)
+
+            def _parse_loop_var():
+                """Парсит одну переменную для цикла напрямую, без get_vars."""
+                t = self.current_token
+                if t.type == Tokens.VAR_DEFINE:
+                    self.eat(Tokens.VAR_DEFINE)
+                    vt = self.current_token
+                    self.eat(Tokens.VARIABLE)
+                    vtype = Context(self.source).get_property("default_variable_type", Vars.LINE)
+                    self.context.set_variable(vt.value, vtype)
+                    return var(vt.value, vtype, vt.starting_pos, vt.ending_pos, vt.source)
+                elif t.type == Tokens.LINE_DEFINE:
+                    self.eat(Tokens.LINE_DEFINE)
+                    self.eat(Tokens.VAR_DEFINE)
+                    vt = self.current_token
+                    self.eat(Tokens.VARIABLE)
+                    self.context.set_variable(vt.value, Vars.LINE)
+                    return var(vt.value, Vars.LINE, vt.starting_pos, vt.ending_pos, vt.source)
+                elif t.type == Tokens.LOCAL_DEFINE:
+                    self.eat(Tokens.LOCAL_DEFINE)
+                    self.eat(Tokens.VAR_DEFINE)
+                    vt = self.current_token
+                    self.eat(Tokens.VARIABLE)
+                    self.context.set_variable(vt.value, Vars.LOCAL)
+                    return var(vt.value, Vars.LOCAL, vt.starting_pos, vt.ending_pos, vt.source)
+                elif t.type == Tokens.GAME_DEFINE:
+                    self.eat(Tokens.GAME_DEFINE)
+                    self.eat(Tokens.VAR_DEFINE)
+                    vt = self.current_token
+                    self.eat(Tokens.VARIABLE)
+                    self.context.set_variable(vt.value, Vars.GAME)
+                    return var(vt.value, Vars.GAME, vt.starting_pos, vt.ending_pos, vt.source)
+                elif t.type == Tokens.SAVE_DEFINE:
+                    self.eat(Tokens.SAVE_DEFINE)
+                    self.eat(Tokens.VAR_DEFINE)
+                    vt = self.current_token
+                    self.eat(Tokens.VARIABLE)
+                    self.context.set_variable(vt.value, Vars.SAVE)
+                    return var(vt.value, Vars.SAVE, vt.starting_pos, vt.ending_pos, vt.source)
+                elif t.type == Tokens.VARIABLE:
+                    self.eat(Tokens.VARIABLE)
+                    if not self.context.has_variable(t.value):
+                        vtype = Context(self.source).get_property("default_variable_type", Vars.LINE)
+                        self.context.set_variable(t.value, vtype)
+                        vvalue_type = None
+                    else:
+                        vtype = self.context.get_variable(t.value)
+                        vvalue_type = self.context.get_variable_type(vtype, t.value)
+                    return var(t.value, vtype, t.starting_pos, t.ending_pos, t.source, value_type=vvalue_type)
+                elif t.type in {Tokens.LOCAL_VARIABLE, Tokens.LINE_VARIABLE,
+                                 Tokens.INLINE_VARIABLE, Tokens.GAME_VARIABLE, Tokens.SAVE_VARIABLE}:
+                    type_map = {Tokens.LOCAL_VARIABLE: Vars.LOCAL, Tokens.LINE_VARIABLE: Vars.LINE,
+                                Tokens.INLINE_VARIABLE: Vars.INLINE, Tokens.GAME_VARIABLE: Vars.GAME,
+                                Tokens.SAVE_VARIABLE: Vars.SAVE}
+                    self.eat(t.type)
+                    return var(t.value, type_map[t.type], t.starting_pos, t.ending_pos, t.source)
+                return None
+
+            # --- Случай 1: for(NUMBER) → multi_times без счётчика ---
+            if self.current_token.type in {Tokens.NUMBER, Tokens.PLUS_NUMBER, Tokens.MINUS_NUMBER}:
+                amount = self.expr()
+                _eat_rparen()
+                loop_ops, ending_pos = _parse_loop_body()
+                counter_var = _make_junk_var("cnt")
+                return action("repeat", "multi_times",
+                              calling_args([], {"variable": counter_var, "amount": amount},
+                                           token.starting_pos, ending_pos, token.source),
+                              token.starting_pos, ending_pos, token.source, operations=loop_ops)
+
+            # Парсим первую переменную напрямую
+            var1 = _parse_loop_var()
+            var2 = None
+
+            if self.current_token.type == Tokens.COMMA:
+                self.eat(Tokens.COMMA)
+                if self.current_token.type in {Tokens.NUMBER, Tokens.PLUS_NUMBER, Tokens.MINUS_NUMBER}:
+                    # --- Случай 2: for(i, NUMBER) → multi_times со счётчиком ---
+                    amount = self.expr()
+                    _eat_rparen()
+                    loop_ops, ending_pos = _parse_loop_body()
+                    counter_var = var1 if var1 is not None else _make_junk_var("cnt")
+                    return action("repeat", "multi_times",
+                                  calling_args([], {"variable": counter_var, "amount": amount},
+                                               token.starting_pos, ending_pos, token.source),
+                                  token.starting_pos, ending_pos, token.source, operations=loop_ops)
+                else:
+                    # for(k, v in ...) — вторая переменная
+                    var2 = _parse_loop_var()
+
+            self.eat(Tokens.IN)
+
+            # Перехватываем range(...) до expr чтобы не падало
+            is_range = (self.current_token.type == Tokens.VARIABLE and
+                        self.current_token.value == "range" and
+                        self.token(self.index + 1).type == Tokens.LPAREN)
+            if is_range:
+                self.eat(Tokens.VARIABLE)
+                self.eat(Tokens.LPAREN)
+                range_args_raw = self.get_args()
+                self.eat(Tokens.RPAREN)  # закрывающая range(...)
+                _eat_rparen()            # закрывающая for(...)
+                loop_ops, ending_pos = _parse_loop_body()
+                rargs = range_args_raw.positional
+
+                if len(rargs) == 2 and _is_location(rargs[0]) and _is_location(rargs[1]):
+                    loc_var = var1 if var1 is not None else _make_junk_var("loc")
+                    return action("repeat", "on_grid",
+                                  calling_args([], {"variable": loc_var, "start": rargs[0], "end": rargs[1]},
+                                               token.starting_pos, ending_pos, token.source),
+                                  token.starting_pos, ending_pos, token.source, operations=loop_ops)
+
+                loop_var = var1 if var1 is not None else _make_junk_var("rng")
+                if len(rargs) == 1:
+                    rstart = number(0, token.starting_pos, token.ending_pos, token.source)
+                    rend, rstep = rargs[0], number(1, token.starting_pos, token.ending_pos, token.source)
+                elif len(rargs) == 2:
+                    rstart, rend = rargs[0], rargs[1]
+                    rstep = number(1, token.starting_pos, token.ending_pos, token.source)
+                else:
+                    rstart, rend, rstep = rargs[0], rargs[1], rargs[2]
+                return action("repeat", "on_range",
+                              calling_args([], {"variable": loop_var, "start": rstart, "end": rend, "interval": rstep},
+                                           token.starting_pos, ending_pos, token.source),
+                              token.starting_pos, ending_pos, token.source, operations=loop_ops)
+
+            iterable = self.expr()
+            # Поддержка явного указания типа: for(k, v in b: map)
+            forced_type = None
+            if self.current_token.type == Tokens.COLON:
+                self.eat(Tokens.COLON)
+                forced_type = self.current_token.value
+                self.eat(Tokens.VARIABLE)
+            _eat_rparen()
+            loop_ops, ending_pos = _parse_loop_body()
+
+            # Определяем тип: явный > get_real_type > value_type переменной из контекста
+            if forced_type is not None:
+                real_type = forced_type
+            else:
+                real_type = iterable.get_real_type() if hasattr(iterable, "get_real_type") else None
+                # Если переменная и тип не определён — читаем из контекста
+                if real_type in {None, "any", "variable"} and iterable.type == "variable":
+                    real_type = self.context.get_variable_type(iterable.var_type, iterable.value)
+            is_map = real_type in {"map", "dict", "dictionary"}
+
+            if var2 is not None:
+                if is_map:
+                    return action("repeat", "for_each_map_entry",
+                                  calling_args([], {"key_variable": var1, "value_variable": var2, "map": iterable},
+                                               token.starting_pos, ending_pos, token.source),
+                                  token.starting_pos, ending_pos, token.source, operations=loop_ops)
+                else:
+                    return action("repeat", "for_each_in_list",
+                                  calling_args([], {"index_variable": var1, "value_variable": var2, "list": iterable},
+                                               token.starting_pos, ending_pos, token.source),
+                                  token.starting_pos, ending_pos, token.source, operations=loop_ops)
+            else:
+                if is_map:
+                    val_junk = _make_junk_var("val")
+                    return action("repeat", "for_each_map_entry",
+                                  calling_args([], {"key_variable": var1, "value_variable": val_junk, "map": iterable},
+                                               token.starting_pos, ending_pos, token.source),
+                                  token.starting_pos, ending_pos, token.source, operations=loop_ops)
+                else:
+                    idx_junk = _make_junk_var("idx")
+                    return action("repeat", "for_each_in_list",
+                                  calling_args([], {"index_variable": idx_junk, "value_variable": var1, "list": iterable},
+                                               token.starting_pos, ending_pos, token.source),
+                                  token.starting_pos, ending_pos, token.source, operations=loop_ops)
+
         elif self.current_token.type == Tokens.RETURN and len(self.context.settings["allow_returns"]) > 0:
             starting_pos = self.current_token.starting_pos
             ending_pos = self.current_token.ending_pos
@@ -3162,6 +3401,38 @@ class action:  # is_jmcc_object
             self.selector = val1
         context = Context(Context.sources[-1])
         if actions[self.object][self.name]["type"].endswith("conditional"):
+            # Перехватываем repeat::while и пускаем через while_ для правильной обработки
+            if self.object == "repeat" and self.name == "while":
+                thing, error_message = self.args.get_args(["conditional"])
+                if thing is None:
+                    error(*error_message)
+                condition = thing["conditional"]
+                # Упрощаем condition
+                if not condition.is_simple():
+                    a1, condition, a2 = condition.simplify()
+                    if condition is None:
+                        # condition попал в a1 (mode=0 поведение)
+                        if a1:
+                            condition = a1[-1]
+                        else:
+                            error_from_object(self, "ArgumentError", translate("error.argumenterror.expected_boolean"))
+                # Вызываем simplify на condition чтобы заполнить new_args
+                if not getattr(condition, 'simple', False):
+                    r = condition.simplify()
+                    if r is not None:
+                        _, condition2, _ = r
+                        if condition2 is not None:
+                            condition = condition2
+                if not condition.type == "action":
+                    error_from_object(condition, "ArgumentError",
+                                      translate("error.argumenterror.wrong_argument", {0: condition.type, 1: "action"}))
+                if not actions[condition.object][condition.name].setdefault("boolean", False):
+                    error_from_object(condition, "ArgumentError", translate("error.argumenterror.expected_boolean"))
+                self.conditional = condition
+                self.simple = True
+                self.args = condition.args
+                self.new_args = condition.new_args
+                return [], self, []
             thing, error_message = self.args.get_args(["conditional"])
             if thing is None:
                 error(*error_message)
@@ -3213,8 +3484,14 @@ class action:  # is_jmcc_object
                 if isinstance(self.lambd, list):
                     for i2 in range(len(actions[self.object][self.name]["lambda"])):
                         if i2 < len(self.lambd):
-                            self.args.unpositional[actions[self.object][self.name]["lambda"][i2]["id"]] = \
-                                self.lambd[i2]
+                            lmb_def = actions[self.object][self.name]["lambda"][i2]
+                            lmb_var = self.lambd[i2]
+                            self.args.unpositional[lmb_def["id"]] = lmb_var
+                            # Propagate the type declared in actions.json to the lambda variable
+                            # so that operators like += work correctly inside the loop body.
+                            if lmb_def.get("type") and lmb_var.get_type() == "variable" and lmb_var.get_real_type() is None:
+                                lmb_var.value_type = lmb_def["type"]
+                                context.set_variable_type(lmb_var.var_type, lmb_var.value, lmb_def["type"])
                         else:
                             break
             x, error_message, load_args, nun = check_args(self, self.args, True)
@@ -3777,6 +4054,21 @@ class calling_function:  # is_jmcc_object
                 spec, error_message, args1, nun = self.spec.get_special(self.value).check_args(args)
                 if spec is not None:
                     self.value_type = spec.get_real_type()
+        elif self.object.get_real_type() in (None, "any") and self.value not in {"__or__", "__and__", "__not__"}:
+            # Type unknown at compile time (lambda param, untyped var, etc.).
+            # Search all available special classes for one that has this operator.
+            # The first match is used — this lets n+=1 work when n has no declared type.
+            _ctx = Context(Context.sources[-1])
+            for _lvl in range(_ctx.context_lvl, -1, -1):
+                for _spec_name, _spec_obj in _ctx.context[_ctx.source][_lvl]["callable"].items():
+                    if isinstance(_spec_obj, special_class) and _spec_obj.has_special(self.value):
+                        self.spec = _spec_obj
+                        _chk, _em, _a1, _nun = _spec_obj.get_special(self.value).check_args(args)
+                        if _chk is not None:
+                            self.value_type = _chk.get_real_type()
+                        break
+                if self.spec is not None:
+                    break
         elif self.value in {"__or__", "__and__", "__not__"}:
             self.value_type = "number"
 
@@ -4086,6 +4378,67 @@ class if_:
         if len(next_operations) > 0:
             error_from_object(self, "", translate("error.unknown13"))
         return previous_operations, None, next_operations
+
+
+
+
+class while_:
+    """Сахар для repeat::while — обрабатывает condition так же как if_."""
+    type = "while"
+    __slots__ = ("condition", "operations", "starting_pos", "ending_pos", "source")
+
+    def __init__(self, condition, operations, starting_pos, ending_pos, source):
+        self.condition = condition
+        self.operations = operations
+        self.starting_pos = starting_pos
+        self.ending_pos = ending_pos
+        self.source = source
+
+    def __str__(self):
+        return f'while_({self.condition})'
+
+    def __repr__(self):
+        return self.__str__()
+
+    @staticmethod
+    def is_independent():
+        return True
+
+    @staticmethod
+    def is_simple():
+        return False
+
+    def in_text(self):
+        return None
+
+    def simplify(self, mode=None, work_with=None):
+        sp = self.starting_pos
+        ep = self.ending_pos
+        src = self.source
+        condition = self.condition
+        # Упрощаем condition
+        if not condition.is_simple():
+            a1, condition, a2 = condition.simplify()
+            if condition is None and a1:
+                condition = a1[-1]
+        # Вызываем simplify ещё раз чтобы заполнить new_args
+        if not getattr(condition, 'simple', False):
+            r = condition.simplify()
+            if r is not None:
+                _, c2, _ = r
+                if c2 is not None:
+                    condition = c2
+        if not condition.type == "action":
+            error_from_object(condition, "ArgumentError",
+                              translate("error.argumenterror.wrong_argument", {0: condition.type, 1: "boolean"}))
+        if not actions[condition.object][condition.name].setdefault("boolean", False):
+            error_from_object(condition, "ArgumentError", translate("error.argumenterror.expected_boolean"))
+        result = action("repeat", "while", condition.args, sp, ep, src, operations=self.operations)
+        result.simple = True
+        result.new_args = condition.new_args
+        result.conditional = condition
+        return [], result, []
+
 
 
 class function:
@@ -4481,8 +4834,9 @@ def check_args(self, args, casts_allowed, strict_check=False):
             continue
         elif (v1.get_real_type() == self.arges[k1]["type"] or (
                 isinstance(self.arges[k1]["type"], (tuple, list, set)) and v1.get_real_type() in self.arges[k1][
-            "type"])) or (
-                v1.get_real_type() == "any" or v1.get_real_type() is None) and not strict_check:
+            "type"])) or \
+                v1.get_real_type() is None or \
+                (v1.get_real_type() == "any" and not strict_check):
             identity_counter += 1
             continue
         elif "array" in self.arges[k1] and v1.get_type() == "array":
@@ -4553,7 +4907,15 @@ def fix_args(self, args1, casts_allowed, inline=False, assigning=None, strict_ch
                 next_operations = next_ops
             super_args.append((var_thing, k1))
         elif assigning is not None and k1 in assigning:
-            if args[k1].get_real_type() in ("any", None):
+            # Always propagate the type declared in actions.json for assign-params.
+            # This ensures that after e.g. `a = variable::get_item_amount(x)`,
+            # the variable `a` gets value_type="number" in the context so that
+            # subsequent operators like `a += 1` resolve correctly.
+            if assigning[k1] not in ("any", None):
+                args[k1].value_type = assigning[k1]
+                Context(Context.sources[-1]).set_variable_type(
+                    args[k1].var_type, args[k1].value, assigning[k1])
+            elif args[k1].get_real_type() in ("any", None):
                 args[k1].value_type = assigning[k1]
         if self.arges[k1]["type"] == "variable" and not "array" in self.arges[k1]:
             Context(Context.sources[-1]).set_variable_type(args[k1].var_type, args[k1].value, args[k1].get_real_type())
@@ -5190,6 +5552,18 @@ class location:  # is_jmcc_object
 
 
 def built_in_simplify(self, mode, work_with):
+    # Variable passthrough: if the sole positional arg is a variable whose
+    # value_type matches this constructor's type (or is unknown), just emit
+    # set_value instead of trying to build a static object at compile time.
+    _pos = self.args.positional
+    _unpos = self.args.unpositional
+    if len(_pos) == 1 and len(_unpos) == 0:
+        _arg = _pos[0]
+        if _arg.get_type() == "variable" and _arg.get_real_type() in (self.type, "any", None):
+            return action("variable", "set_value",
+                          calling_args([], {"value": _arg}, self.starting_pos, self.ending_pos, self.source),
+                          self.starting_pos, self.ending_pos, self.source).simplify(
+                mode=0, work_with=work_with)
     special, error_message, args1, nun = check_args(self, self.args, True, strict_check=True)
     if error_message is not None:
         spec = Context(Context.sources[-1])

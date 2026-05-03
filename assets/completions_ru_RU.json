@@ -1,6 +1,6 @@
 {
     "jmcc::run_function": {
-        "desc": "**Имя:** Вызвать python функцию\\\n**Тип:** Действие JMCC\\\n**Описание:** Выполняет python функцию и возвращает полученный результат в inline переменную. Python функция должна обязательно возвращать простое значение\n\n**Пример использования:**\n```justcode\ninline var a = jmcc::run_function(\"main.py\",\"function\",[\"arg\"]);\n```\n\n",
+        "desc": "**Имя:** Вызвать python функцию\\\n**Тип:** Действие JMCC\\\n**Описание:** Выполняет python функцию и возвращает полученный результат в inline переменную. Python функция должна обязательно возвращать простое значение\n\n**Пример использования:**\n\nPython файл:\n```python\n# main.py\ndef function(arg):\n    return arg + \"str\"\n```\n\n\nJustCode файл:\n```justcode\n// main.jc\ninline var a = jmcc::run_function(\"main.py\", \"function\", [\"arg\"]); // сохранит argstr\n```",
         "detail": "Вызвать python функцию"
     },
     "jmcc::error": {

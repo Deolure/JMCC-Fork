@@ -1,7 +1,7 @@
 {
     "jmcc::run_function": {
-        "desc": "**Name:** Call python function\\\n**Type:** JMCC Action\\\n**Description:** Executes a python function and returns the result to an inline variable. The python function must return a simple value.\n\n**Usage example:**\n```justcode\ninline var py = jmcc::run_function(\"main.py\",\"function\",[\"arg\"]);\n```\n\n",
-        "detail": "Call python function"
+        "desc": "**Name:** Call a Python function\\\n**Type:** JMCC Action\\\n**Description:** Executes a Python function and returns the result into an inline variable. The Python function must return a simple value.\n\n**Usage example:**\n\nPython file:\n```python\n# main.py\ndef function(arg):\n    return arg + \"str\"\n```\n\n\nJustCode file:\n```justcode\n// main.jc\ninline var a = jmcc::run_function(\"main.py\", \"function\", [\"arg\"]); // will store argstr\n```",
+        "detail": "Call a Python function"
     },
     "jmcc::error": {
         "desc": "**Name:** Throw compile error\\\n**Type:** JMCC Action\\\n**Description:** Throws an error during the compilation process.\n\n**Usage example:**\n```justcode\njmcc::error(\"This is not allowed!\");\n```\n\n",
