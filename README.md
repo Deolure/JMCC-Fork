@@ -999,11 +999,75 @@ if (5 / 0) {
    jmcc::error("Деление на 0 запрещено!")
 }
 ```
-
 Также была добавлена нативная поддержка операторов и условных операторов. Все они прописаны в файле all_operations.jc, т.к писал я его давно в нем могут быть ошибки. Вы можете сообщить о проблемах мне и в будущем я возможно обновлю файл или вы можете сами задать поведение операторам изменив файл all_operations.jc. Отключить нативную поддержку операторов можно в ``jmcc.properties``, задав значение False ключу `load_builtins`.
 
 Теперь вы можете выбрать на какой удаленный сервер отправлять скомпилированный файл. Выбор также осуществляется в файле ``jmcc.properties``, в ключе upload_target. Доступные удаленные сервера: justmc - по умолчанию, tmpfiles, litterbox.
 
+**03/05/2026**
+Добавил поддержку циклов for и while:
+```ts
+while player::is_flying() {
+
+}
+// ==
+repeat::while(player::is_flying) {
+
+}
+```
+```ts
+while (true) {
+
+}
+// ==
+repeat::forever() {
+
+}
+```
+```ts
+for c, 10 {
+
+}
+// ==
+repeat::multi_times(10) { c ->
+
+}
+```
+```ts
+for i in range(0, 5, 2) {
+
+}
+// ==
+repeat::on_range(0, 5, 2) { i ->
+
+}
+```
+```ts
+for loc in range(location(1,2,3),location(3,2,1)) {
+
+}
+// ==
+repeat::on_grid(location(1,2,3),location(3,2,1)) { loc ->
+
+}
+```
+```ts
+for i, v in variable: list {
+
+}
+// ==
+repeat::for_each_in_list(variable) {i, v ->
+
+}
+```
+```ts
+for k, v in variable: map {
+
+}
+// ==
+repeat::for_each_map_entry(variable) {k, v ->
+
+}
+```
 На этом всё. Прошу писать баги в ишьюсы или мне лично.
 ### Документация
 
